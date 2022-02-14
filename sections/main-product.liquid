@@ -34,6 +34,9 @@
 
 <section class="page-width section-{{ section.id }}-padding">
   <div class="product product--{{ section.settings.media_size }} product--{{ section.settings.gallery_layout }} grid grid--1-col {% if product.media.size > 0 %}grid--2-col-tablet{% else %}product--no-media{% endif %}">
+    
+    {% if product.metafields.gfx.gfx_template_id == blank %}
+    <!-- SHOW NORMAL PRODUCT IMAGE WHEN NO TEMPLATE_ID IS ASSOCIATED TO THE PRODUCT -->
     <div class="grid__item product__media-wrapper">
       <media-gallery id="MediaGallery-{{ section.id }}" role="region" {% if section.settings.enable_sticky_info %}class="product__media-gallery"{% endif %} aria-label="{{ 'products.product.media.gallery_viewer' | t }}" data-desktop-layout="{{ section.settings.gallery_layout }}">
         <div id="GalleryStatus-{{ section.id }}" class="visually-hidden" role="status"></div>
@@ -184,6 +187,15 @@
         {%- endif -%}
       </media-gallery>
     </div>
+    {% else %}
+    <!-- SHOW GFX EDITOR WHEN THE TEMPLATE_ID IS ASSOCIATED TO THE PRODUCT -->
+    <div class="grid__item post-large--one-half">
+      <div style="padding-top: 125.25%; position: relative;">
+        <div id="gfx-product" style="position: absolute; top: 0; left: 0; height: 100%; width: 100%;"></div>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="product__info-wrapper grid__item{% if settings.page_width > 1400 and section.settings.media_size == "small" %} product__info-wrapper--extra-padding{% endif %}">
       <div id="ProductInfo-{{ section.id }}" class="product__info-container{% if section.settings.enable_sticky_info %} product__info-container--sticky{% endif %}">
         {%- assign product_form_id = 'product-form-' | append: section.id -%}
@@ -318,7 +330,8 @@
               {%- if block.settings.picker_type == 'button' -%}
                 <variant-radios class="no-js-hidden" data-section="{{ section.id }}" data-url="{{ product.url }}" {{ block.shopify_attributes }}>
                   {%- for option in product.options_with_values -%}
-                      <fieldset class="js product-form__input">
+                      <!-- ADD CUSTOM-SELECTOR-VARIANTS CLASS TO DISABLE / ENABLE SIZE VARIANTS BASE ON INVENTORY -->
+                      <fieldset class="js product-form__input custom-selector-variants">
                         <legend class="form__label">{{ option.name }}</legend>
                         {%- for value in option.values -%}
                           <input type="radio" id="{{ section.id }}-{{ option.position }}-{{ forloop.index0 }}"
@@ -345,8 +358,9 @@
                         {{ option.name }}
                       </label>
                       <div class="select">
+                        <!-- ADD CUSTOM-SELECTOR-VARIANTS CLASS TO DISABLE / ENABLE SIZE VARIANTS BASE ON INVENTORY -->
                         <select id="Option-{{ section.id }}-{{ forloop.index0 }}"
-                          class="select__select"
+                          class="select__select custom-selector-variants"
                           name="options[{{ option.name | escape }}]"
                           form="{{ product_form_id }}"
                         >
@@ -403,6 +417,13 @@
                 </div>
 
                 {%- form 'product', product, id: product_form_id, class: 'form', novalidate: 'novalidate', data-type: 'add-to-cart-form' -%}
+                
+                  <!-- INCLUDE THE GFX-EDITOR SNIPPET -->
+                  {% if product.metafields.gfx.gfx_template_id == blank %}
+                  {% else %}
+                    {% render 'gfx-editor' with current_variant: current_variant, product: product %}
+                  {% endif %}
+
                   <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}" disabled>
                   <div class="product-form__buttons">
                     <button
@@ -424,9 +445,14 @@
                           </svg>
                         </div>
                     </button>
-                    {%- if block.settings.show_dynamic_checkout -%}
-                      {{ form | payment_button }}
-                    {%- endif -%}
+
+                    <!-- HIDE THE BUY IT NOW BUTTON TO FORCE THE ADD TO CARD BUTTON PROCESS (SAVE DESIGN) -->
+                    {% if product.metafields.gfx.gfx_template_id == blank %}
+                      {%- if block.settings.show_dynamic_checkout -%}
+                        {{ form | payment_button }}
+                      {%- endif -%}
+                    {% endif %}
+
                   </div>
                 {%- endform -%}
               </product-form>

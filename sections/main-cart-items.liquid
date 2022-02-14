@@ -57,11 +57,55 @@
 
             <tbody>
               {%- for item in cart.items -%}
+                <!-- VARIABLE DEFINITION -->
+                {% assign designNumber = false %}
+                {% assign gfxThumbUrlFront = false %}
+                {% assign gfxThumbUrlBack = false %}
+                {% assign bestAppsAPI = 'https://valabxq1o3.execute-api.us-west-2.amazonaws.com/gfx-core-production/api/v1/public' %}                
+                
+                <!-- REVIEW THE ITEMS TO FIND GFX PRODUCTS AND POPULATE VARIABLES TO USE THE PROPER THUMBNAILS -->
+                {% for property in item.properties %}
+                  {% unless property.last == blank %}
+                    {% if property.first == "_design_number" %}
+                      {% assign designNumber = property.last %}
+                      {% assign gfxThumbUrlFront = bestAppsAPI | append: "/image/embedded/" | append: property.last | append: "/front" %}
+                    {% endif %}
+                    {% if property.first == "_gfx_sides" and property.last == '2' %}
+                      {% assign gfxThumbUrlBack = bestAppsAPI | append: "/image/embedded/" | append: designNumber | append: "/back" %}
+                    {% endif %}
+                  {% endunless %}
+                {% endfor %}
+                {% assign gfxItemUrl = item.url | append: "&" | append: "_design_number=" | append: designNumber %}
+
                 <tr class="cart-item" id="CartItem-{{ item.index | plus: 1 }}">
                   <td class="cart-item__media">
-                    {% if item.image %}
+                    <!-- CHECK IF THE ITEM HAS DESIGN NUMBER AN POPULATE IMAGES ACCORDANTLY -->
+                    {% if designNumber %}
                       {% comment %} Leave empty space due to a:empty CSS display: none rule {% endcomment %}
-                      <a href="{{ item.url }}" class="cart-item__link" aria-hidden="true" tabindex="-1"> </a>
+                      <a href="{{ gfxItemUrl }}" class="cart-item__link" aria-hidden="true" tabindex="-1"> </a>
+                      <div class="cart-item__image-container gradient global-media-settings" style="border: none;">
+                        <img src="{{ gfxThumbUrlFront }}"
+                          class="cart-item__image"
+                          alt="{{ item.title | escape }}"
+                          loading="lazy"
+                          width="150"
+                          height="{{ 150 | divided_by: item.image.aspect_ratio | ceil }}"
+                        >
+                        {% if gfxThumbUrlBack %}
+                          <img src="{{ gfxThumbUrlBack }}"
+                            class="cart-item__image"
+                            style="position: absolute; top: 5rem; left: 3.5rem;"
+                            alt="{{ item.title | escape }}"
+                            loading="lazy"
+                            width="150"
+                            height="{{ 150 | divided_by: item.image.aspect_ratio | ceil }}"
+                          >
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      {% if item.image %}
+                        {% comment %} Leave empty space due to a:empty CSS display: none rule {% endcomment %}
+                        <a href="{{ item.url }}" class="cart-item__link" aria-hidden="true" tabindex="-1"> </a>
                         <div class="cart-item__image-container gradient global-media-settings">
                           <img src="{{ item.image | img_url: '300x' }}"
                             class="cart-item__image"
@@ -71,6 +115,7 @@
                             height="{{ 150 | divided_by: item.image.aspect_ratio | ceil }}"
                           >
                         </div>
+                      {% endif %}
                     {% endif %}
                   </td>
 
@@ -78,8 +123,13 @@
                     {%- if section.settings.show_vendor -%}
                       <p class="caption-with-letter-spacing light">{{ item.product.vendor }}</p>
                     {%- endif -%}
-
-                    <a href="{{ item.url }}" class="cart-item__name h4 break">{{ item.product.title | escape }}</a>
+                    
+                    <!-- CHANGE ITEM URL TO ALLOW EDIT DESIGN WHEN AN ITEM HAS DESIGN NUMBER -->
+                    {% if designNumber %}
+                      <a href="{{ gfxItemUrl }}" class="cart-item__name h4 break">{{ item.product.title | escape }}</a>
+                    {% else%}
+                      <a href="{{ item.url }}" class="cart-item__name h4 break">{{ item.product.title | escape }}</a>
+                    {% endif %}
 
                     {%- if item.original_price != item.final_price -%}
                       <div class="cart-item__discounted-prices">
