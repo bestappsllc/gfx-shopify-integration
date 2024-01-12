@@ -93,9 +93,14 @@
             </span>
             {%- render 'loading-spinner' -%}
           </button>
-          {%- if show_dynamic_checkout -%}
-            {{ form | payment_button }}
+
+          <!-- HIDE ANY OTHER BUTTONS THAT COULD BYPASS THE SAVEDESIGN() FUNCTION -->
+          {% if product.metafields.gfx.gfx_template_id == blank %}
+            {%- if show_dynamic_checkout -%}
+              {{ form | payment_button }}
+            {%- endif -%}
           {%- endif -%}
+
         </div>
       {%- endform -%}
     </product-form>

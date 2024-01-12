@@ -1,0 +1,150 @@
+<!-- Import JS code for the editor -->
+<script
+  src="https://editor.gfxco.com/lib/embed/index.js"
+  type="text/javascript"
+></script>
+
+<!-- Import JQuery if your theme doesn't have it -->
+<script 
+  src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+  type="text/javascript"
+></script>
+
+<script async>
+  // Unique Id generator function 
+  function uuidv4() {
+    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+      (
+        c ^
+        (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+      ).toString(16)
+    );
+  }
+
+  document.addEventListener("DOMContentLoaded", async function () {
+    // Variables
+    var savingDesign = false;
+    var currentUrl = new URL(window.location.href);
+    var designNumber = currentUrl.searchParams.get("_design_number") || uuidv4();
+    var apiUrl = "https://valabxq1o3.execute-api.us-west-2.amazonaws.com/gfx-core-production/api/v1/public";
+    
+    /* 
+      Product page elements (product form & add to card button)
+      MAKE SURE THE SELECTORS MATCHES THE THEME'S ELEMENTS
+    */
+    var formElement = document.querySelector("form[action='/cart/add']");
+    var addToCartButtonElement = document.querySelector("form[action='/cart/add'] button[type='submit']");
+
+    // Disable the elements while the editor is loading
+    formElement.disabled = true;
+    addToCartButtonElement.disabled = true;
+
+    // GFX Instance
+    var gfx = window.embedGFX(
+      {
+        v1TemplateId: "{{ product.metafields.gfx.gfx_template_id }}",
+        interfaceType: "basic",
+        designNumber,
+        gfxConfig: {
+          designNumber,
+          apiUrl,
+          customOptions: {
+            //this property is used to add custom css to the editor
+            css: ``,
+          },
+          browserSupport: {
+            isVisible: true,
+          },
+        },
+      },
+      document.getElementById("gfx-product")
+    );
+    
+    // Enable the elements when the editor is ready
+    gfx.addEventListener("onStateChange", (state) => {
+      var isAsyncLoading = state.isAsyncLoading;
+      if(!savingDesign){
+        formElement.disabled = isAsyncLoading;
+        addToCartButtonElement.disabled = isAsyncLoading;
+      }  
+    });
+
+    // Alter the add to cart button function to save the design.
+    addToCartButtonElement.addEventListener("click", async function (e) {
+        e.preventDefault();
+        
+        // Disable the add to cart button to prevent multiple clicks
+        savingDesign = true;
+        addToCartButtonElement.disabled = true;
+
+        /* 
+          Get the current product variant. In this theme example 
+          the variant is stored in a hidden input (initial value), 
+          the changes of the variant can be retrieved from the url.
+          
+          In some themes the variant changes can be retrieved 
+          from js events.
+        */ 
+        const productUrl = new URL(window.location.href);
+        const currentVariant = productUrl.searchParams.get('variant') 
+        || document.querySelector('input[name="id"]').value;
+        
+        /*
+          For some themes the items quantity can be changed, for these
+          scenarios use the proper selector to retrieve the quantity value.
+          make sure to remove the "ItemQuantity" variable from the cart if
+          the quantity won't be used.
+        */
+        const ItemQuantity = document.querySelector('input[name="quantity"]').value;
+        
+        /* 
+          The saveDesign() function will store the design in GFX database
+          that will be used when processing the order. it will also generate
+          the proof images that will be used in the cart page.
+        */
+        var savedDesign = await gfx.actions.saveDesign();
+
+        /*
+          Some templates has validations regarding to customizations, if a validation
+          is triggered an editor's message will pop up and the design won't be saved until 
+          all validations are passed, for these scenarios the item is not added to the cart.
+        */
+        if (!savedDesign) {
+          // Enable the add to cart button
+          savingDesign = false;
+          addToCartButtonElement.disabled = false;
+          return;
+        }
+
+        var sides = 0;
+        // Check if the design has assets in the back and the front
+        if (savedDesign.design.back?.objects.length > 0) {
+          sides++;
+        }
+        if (savedDesign.design.front.objects.length > 0) {
+          sides++;
+        }
+
+        // add item to the cart
+        var addCart = await $.post(
+          "/cart/add.js",
+          {
+            id: parseInt(currentVariant),
+            quantity: parseInt(ItemQuantity),
+            properties: {
+              _design_number: savedDesign.designNumber,
+              _gfx_sides: sides,
+            },
+          },
+          null,
+          "json"
+        );
+
+        // redirect to cart page the item has been added to the cart
+        if (addCart.id) {
+          window.location.href = "/cart";
+        };
+
+    });
+  });
+</script>
