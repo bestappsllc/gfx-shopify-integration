@@ -21,6 +21,10 @@
     );
   }
 
+  // add variables to expose the product color and change the product color
+  var getAvilableProductColor;
+  var changeProductColor;
+
   document.addEventListener("DOMContentLoaded", async function () {
     // Variables
     var savingDesign = false;
@@ -60,6 +64,14 @@
       document.getElementById("gfx-product")
     );
     
+    // Expose the product colors and change product color functions
+    getAvilableProductColor = function () {
+      return gfx.state.design.displayColors;
+    }
+    changeProductColor = function (color = 'white') {
+      gfx.actions.setPrintableColor(color);  
+    }
+
     // Enable the elements when the editor is ready
     gfx.addEventListener("onStateChange", (state) => {
       var isAsyncLoading = state.isAsyncLoading;
